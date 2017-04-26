@@ -114,7 +114,7 @@ public class functions {
                 int return_value  = InsertNewRecordAtIndex(filename,key,byteoffset);
                 if (return_value == -1) System.err.println("You Can't add new record; Index is Full");
                 choice = 0 ;
-                Updatetree(filename, key, return_value);
+                Updatetree(filename,1, key, return_value);
             }
             
             else if(choice ==2){
@@ -123,7 +123,9 @@ public class functions {
             }
             
             else if(choice ==3){
-                
+                System.out.println("Enter a Key to search for");
+                int key = reader.nextInt();
+                SearchRecordInIndex(filename, key);
             }
             
             else if(choice ==4){
@@ -131,17 +133,61 @@ public class functions {
             }
             
             else if(choice ==5){
-                    Process p ;
-                    p = Runtime.getRuntime().exec("clear");
-                    p.waitFor();
-                    choice = 0 ;
+                    for (int i = 0 ; i < 24 ; i++) System.out.println("");
             }
             
         }
     }
+    
+    
+    static void SearchRecordInIndex (String filename, int Key) throws FileNotFoundException, IOException {
+        RandomAccessFile filedata = new RandomAccessFile(filename+".bin", "rw");
+        //int number_of_records = (int) (filedata.length() / 16) ;
+        int offset = -1 ;
+        //System.err.println(number_of_records);
+        for (int i=16 ; i < filedata.length() ; i= i + 16){
+            filedata.seek(i);
+            int temp = filedata.readInt();
+            if (temp == Key){
+                filedata.seek(i+4);
+                offset = filedata.readInt();
+                break;
+            }
+        }
+        for (int i = 0 ; i < 4 ; i++) System.out.println("");
+        System.out.println("Search result is: " + offset);
+        for (int i = 0 ; i < 4 ; i++) System.out.println("");
+    }
 
     
-    static void Updatetree(String filename , int key, int position){
-        
+    static void Updatetree(String filename ,int start , int key, int position) throws FileNotFoundException, IOException{
+        RandomAccessFile filedata = new RandomAccessFile(filename+".bin", "rw");
+        filedata.seek(start*16);
+        int node_value = filedata.readInt();
+        //System.err.println("NODE value = "+ node_value);
+        filedata.seek(start*16+8);
+        int left_child = filedata.readInt() ;
+        filedata.seek(start*16+8+4);
+        int right_child = filedata.readInt() ;
+        //System.err.println( "Start is " + start +" NODE value = "+ node_value+ " Left child= "+ left_child + " Right child= "+ right_child);
+        if(key > node_value){
+            if(right_child == -1){
+                filedata.seek(start*16+8+4);
+                filedata.writeInt(position);
+            }
+            else{
+                Updatetree(filename, right_child, key, position);
+            }
+        }
+        else if (key < node_value){
+            if (left_child == -1){
+                filedata.seek(start*16+8);
+                filedata.writeInt(position);
+            }
+            else{
+                Updatetree(filename, left_child, key, position);
+            }
+            
+        }
     }
 }
