@@ -114,6 +114,7 @@ public class functions {
                 int return_value  = InsertNewRecordAtIndex(filename,key,byteoffset);
                 if (return_value == -1) System.err.println("You Can't add new record; Index is Full");
                 choice = 0 ;
+                Updatetree(filename, key, return_value);
             }
             
             else if(choice ==2){
@@ -139,4 +140,8 @@ public class functions {
         }
     }
 
+    
+    static void Updatetree(String filename , int key, int position){
+        
+    }
 }
