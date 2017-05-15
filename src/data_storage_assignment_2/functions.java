@@ -27,39 +27,30 @@ public class functions {
         for (int i = 1 ; i <= numberOfRecords ; i ++)
         {
             if (i==numberOfRecords){
+                for (int j = 0 ; j <11 ; j ++)
                 filedata.writeInt(-1);
-                filedata.writeInt(0);
-                filedata.writeInt(0);
-                filedata.writeInt(0);
             }
             else{
-                filedata.writeInt(i);
-                filedata.writeInt(0);
-                filedata.writeInt(0);
-                filedata.writeInt(0);
+                for (int j = 0 ; j <11 ; j ++)
+                {
+                    if (j==1) filedata.writeInt(i);
+                    else filedata.writeInt(-1);
+                }
             }
         }
         //System.out.println("File name: " + filename + " Records:" + numberOfRecords);
     }
     
     static void DisplayIndexFileContent (String filename) throws FileNotFoundException, IOException{
-            System.out.println("|Node|Offset|Left Child|Right Child|");
+           // System.out.println("|Node|Offset|Left Child|Right Child|");
             RandomAccessFile filedata = new RandomAccessFile(filename+".bin", "rw");
-            for (int j = 0 ; j < filedata.length()/16 ; j++)
+            for (int j = 0 ; j < filedata.length()/(11*4) ; j++)
             {
-                filedata.seek(j*16);
-                System.out.print("|  " +filedata.readInt()+" |");
-                //filedata.seek((j*8)+4);
-                
-                System.out.print("  " + filedata.readInt()+ "   |");
-                //filedata.seek((j*8)+4);
-                
-                System.out.print("    " + filedata.readInt() + "     |" );
-                //filedata.seek((j*8)+4);
-                
-                System.out.print("     " + filedata.readInt()+ "     |" );
-                //filedata.seek((j*8)+4);
-                               
+                filedata.seek(j*(11*4));
+                for (int i = 0 ; i < 11 ; i ++)
+                {
+                    System.out.print("|  " +filedata.readInt()+" |");
+                }                   
                 System.out.println("");
             }
     }
@@ -68,7 +59,7 @@ public class functions {
     static int InsertNewRecordAtIndex (String filename, int Key, int ByteOffset) throws FileNotFoundException, IOException{
         RandomAccessFile filedata = new RandomAccessFile(filename+".bin", "rw");
         int empty_node ;
-        filedata.seek(0);
+        filedata.seek(4);
         empty_node = filedata.readInt();
         if (empty_node == -1){
             filedata.writeInt(empty_node);
@@ -76,15 +67,32 @@ public class functions {
         }
         else{
         int indx = 0;
-        filedata.seek(16*empty_node);
+        filedata.seek(((11*4)*empty_node)+4);
         indx = filedata.readInt();
-        filedata.seek(16*empty_node);
-        filedata.writeInt(Key);
-        filedata.writeInt(ByteOffset);
-        filedata.writeInt(-1);
-        filedata.writeInt(-1);
         
-        filedata.seek(0);
+        filedata.seek((11*4)*empty_node);
+        int node_type = filedata.readInt();
+        for (int k = 12*4*empty_node ; k < 12*4*empty_node+10*4 ; k+= 8 )
+        {
+                int temp = filedata.readInt() ;
+                if (temp == -1 || temp == indx)
+                {
+                    filedata.seek((11*4)*empty_node - 4 );
+                    filedata.writeInt(Key);
+                    filedata.writeInt(ByteOffset);
+                }
+                
+            
+        }
+//        filedata.writeInt(Key);
+//        filedata.writeInt(ByteOffset);
+//        filedata.writeInt(-1);
+//        filedata.writeInt(-1);
+        
+        if (node_type == -1) node_type = 0 ;
+        filedata.seek((11*4)*empty_node);
+        filedata.writeInt(node_type);
+        filedata.seek(4);
         filedata.writeInt(indx);
         
         
@@ -99,11 +107,11 @@ public class functions {
         while (flag!=false){
             System.out.println("Please choose and action to do");
             System.out.println("1)Add New Record \n2)Display File content \n"
-                + "3)Search \n4)Display Tree in order \n5)Clear Screen\n6)Exit");
+                + "3)Search \n4)Exit");
             int choice = 0;
             choice = reader.nextInt();
             
-            if(choice == 6){
+            if(choice == 4){
                 flag = false;
             }
             else if(choice ==1){
@@ -127,15 +135,6 @@ public class functions {
                 int key = reader.nextInt();
                 SearchRecordInIndex(filename, key);
             }
-            
-            else if(choice ==4){
-                
-            }
-            
-            else if(choice ==5){
-                    for (int i = 0 ; i < 24 ; i++) System.out.println("");
-            }
-            
         }
     }
     
@@ -145,6 +144,7 @@ public class functions {
         //int number_of_records = (int) (filedata.length() / 16) ;
         int offset = -1 ;
         //System.err.println(number_of_records);
+        
         for (int i=16 ; i < filedata.length() ; i= i + 16){
             filedata.seek(i);
             int temp = filedata.readInt();
@@ -154,6 +154,42 @@ public class functions {
                 break;
             }
         }
+        
+        /*
+        for (int j = 0 ; j < filedata.length()/16 ; j++)
+            {
+                filedata.seek(j*16);
+                int node_value = filedata.readInt();
+                if (node_value == Key) offset = filedata.readInt();
+                else if (Key > node_value){
+                    filedata.seek(j*16+12);
+                    int right_child = filedata.readInt();
+                    if (right_child == -1)
+                    {
+                        filedata.seek(j*16+4);
+                        offset = filedata.readInt();
+                    }
+                    else{
+                        
+                    }
+                }
+                
+                else if (Key < node_value){
+                    filedata.seek(j*16+8);
+                    int left_child = filedata.readInt();
+                    if (left_child == -1)
+                    {
+                        filedata.seek(j*16+4);
+                        offset = filedata.readInt();
+                    }
+                    else{
+                        
+                    }
+                }
+                
+                
+            }*/
+        
         for (int i = 0 ; i < 4 ; i++) System.out.println("");
         System.out.println("Search result is: " + offset);
         for (int i = 0 ; i < 4 ; i++) System.out.println("");
