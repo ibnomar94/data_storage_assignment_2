@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.Arrays;
 import java.util.Scanner;
 
 /**
@@ -59,17 +60,49 @@ public class functions {
     static int InsertNewRecordAtIndex (String filename, int Key, int ByteOffset) throws FileNotFoundException, IOException{
         RandomAccessFile filedata = new RandomAccessFile(filename+".bin", "rw");
         int empty_node ;
+        int[][] keys_values = new int[5][2] ;
+        int[] keys = new int[5];
         filedata.seek(4);
         empty_node = filedata.readInt();
-        if (empty_node == -1){
-            filedata.writeInt(empty_node);
-            return empty_node;
-        }
-        else{
+        keys_values[0][0] = keys[0] = Key;
+        keys_values[0][1] = ByteOffset;
+        int count = 0 ;
+        for (int j = 0 ; j < filedata.length()/(11*4) ; j++)
+            {
+                filedata.seek(j*(11*4)+4);
+                for (int i = 0 ; i < 11 ; i ++)
+                {
+                   if (i>0){
+                       int key , value;
+                       key = filedata.readInt();
+                       value = filedata.readInt();
+                       while (key !=-1 && value != -1){
+                           keys_values[i][0] = keys[i] = key;
+                           keys_values[i][1] = value;
+                       }
+                   }
+                }
+                
+                Arrays.sort(keys);
+                filedata.seek(j*(11*4));
+                for (int i = 0 ; i <keys.length ; i++){
+                    for (int k = 0 ; k < keys_values.length ; k++){
+                        if (keys[i] == keys_values[j][0] && keys[i] !=-1){
+                            filedata.writeInt(keys[i]);
+                            filedata.writeInt(keys_values[i][1]);   
+                            count ++ ;
+                        }
+                    }
+                }
+                for (int i = 0 ; i < 5 - keys.length ; i++) filedata.writeInt(keys[-1]);
+                
+            }
+        
+        
         int indx = 0;
         filedata.seek(((11*4)*empty_node)+4);
         indx = filedata.readInt();
-        
+        /*
         filedata.seek((11*4)*empty_node);
         int node_type = filedata.readInt();
         for (int k = 12*4*empty_node ; k < 12*4*empty_node+10*4 ; k+= 8 )
@@ -92,12 +125,17 @@ public class functions {
         if (node_type == -1) node_type = 0 ;
         filedata.seek((11*4)*empty_node);
         filedata.writeInt(node_type);
-        filedata.seek(4);
-        filedata.writeInt(indx);
         
+        */
+        if (count == 5){
+            filedata.seek(4);
+            filedata.writeInt(indx);
+            filedata.seek(((11*4)*empty_node));
+            filedata.writeInt(1);
+        }
         
         return empty_node ;
-        }
+        
         
     }
 
@@ -115,14 +153,24 @@ public class functions {
                 flag = false;
             }
             else if(choice ==1){
-                System.out.println("Enter Key");
-                int key = reader.nextInt();
-                System.out.println("Enter Byte offset");
-                int byteoffset = reader.nextInt();
-                int return_value  = InsertNewRecordAtIndex(filename,key,byteoffset);
-                if (return_value == -1) System.err.println("You Can't add new record; Index is Full");
-                choice = 0 ;
-                Updatetree(filename,1, key, return_value);
+                RandomAccessFile filedata = new RandomAccessFile(filename+".bin", "rw");
+                filedata.seek(4);
+                int checker = filedata.readInt();
+                if (checker != -1)
+                {
+                    System.out.println("Enter Key");
+                    int key = reader.nextInt();
+                    System.out.println("Enter Byte offset");
+                    int byteoffset = reader.nextInt();
+                    int return_value  = InsertNewRecordAtIndex(filename,key,byteoffset);
+                    if (return_value == -1) System.err.println("You Can't add new record; Index is Full");
+                    choice = 0 ;
+                   // Updatetree(filename,1, key, return_value);
+                }
+                else {
+                    System.err.println("Index File is full");
+                }
+                
             }
             
             else if(choice ==2){
@@ -133,66 +181,57 @@ public class functions {
             else if(choice ==3){
                 System.out.println("Enter a Key to search for");
                 int key = reader.nextInt();
-                SearchRecordInIndex(filename, key);
+                SearchRecordInIndex(filename, key , 1);
             }
+            
         }
     }
     
     
-    static void SearchRecordInIndex (String filename, int Key) throws FileNotFoundException, IOException {
+    static void SearchRecordInIndex (String filename, int Key , int start) throws FileNotFoundException, IOException {
         RandomAccessFile filedata = new RandomAccessFile(filename+".bin", "rw");
         //int number_of_records = (int) (filedata.length() / 16) ;
         int offset = -1 ;
-        //System.err.println(number_of_records);
-        
-        for (int i=16 ; i < filedata.length() ; i= i + 16){
-            filedata.seek(i);
-            int temp = filedata.readInt();
-            if (temp == Key){
-                filedata.seek(i+4);
-                offset = filedata.readInt();
-                break;
+        int node_size ;
+        node_size = 11*4;
+        filedata.seek(node_size*start);
+        int node_type = filedata.readInt();
+       // System.err.println("Node Type = "+node_type);
+        if (node_type == 0 ){
+            for (int i = 0 ; i < node_size ; i+=8)
+            {
+                if( filedata.readInt() == Key){
+                    offset = filedata.readInt();
+                }
             }
+             System.err.println("Search result is: " + offset);
         }
         
-        /*
-        for (int j = 0 ; j < filedata.length()/16 ; j++)
+        else if (node_type == 1) {
+            int first_match ;
+            int next_node = offset ;
+            for (int i = 0 ; i < node_size ; i+=8)
             {
-                filedata.seek(j*16);
-                int node_value = filedata.readInt();
-                if (node_value == Key) offset = filedata.readInt();
-                else if (Key > node_value){
-                    filedata.seek(j*16+12);
-                    int right_child = filedata.readInt();
-                    if (right_child == -1)
-                    {
-                        filedata.seek(j*16+4);
-                        offset = filedata.readInt();
-                    }
-                    else{
-                        
+                //System.err.println("Temp = "+ filedata.readInt());
+                if(filedata.readInt()>= Key){
+                    first_match = filedata.readInt();
+                    if (next_node == -1 || next_node >= first_match){
+                        next_node = first_match;
                     }
                 }
-                
-                else if (Key < node_value){
-                    filedata.seek(j*16+8);
-                    int left_child = filedata.readInt();
-                    if (left_child == -1)
-                    {
-                        filedata.seek(j*16+4);
-                        offset = filedata.readInt();
-                    }
-                    else{
-                        
-                    }
-                }
-                
-                
-            }*/
+            }
+            
+            if (next_node != -1){
+             //   System.err.println("Next node is " + next_node);
+                SearchRecordInIndex(filename, Key , (next_node));
+            }
+            
+            else if (next_node == -1) System.err.println("Search result is: " + offset);
+        }
+            
+           
         
-        for (int i = 0 ; i < 4 ; i++) System.out.println("");
-        System.out.println("Search result is: " + offset);
-        for (int i = 0 ; i < 4 ; i++) System.out.println("");
+        
     }
 
     
